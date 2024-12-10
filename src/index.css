@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ens-blue: #4C82FB;
+  --ens-blue-dark: #3E74E7;
+  --ens-green: #45B882;
+  --ens-green-dark: #3DA876;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+}
