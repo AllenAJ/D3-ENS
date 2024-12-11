@@ -25,6 +25,30 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+.vercel
+
+```
+
+# .vercel/project.json
+
+```json
+{"orgId":"team_KHAELfOHJMd9bgdTf3izvyOL","projectId":"prj_XpqqyrO6YnDGQ12SDtPCsgV7I1kk"}
+```
+
+# .vercel/README.txt
+
+```txt
+> Why do I have a folder named ".vercel" in my project?
+The ".vercel" folder is created when you link a directory to a Vercel project.
+
+> What does the "project.json" file contain?
+The "project.json" file contains:
+- The ID of the Vercel project that you linked ("projectId")
+- The ID of the user or team your Vercel project is owned by ("orgId")
+
+> Should I commit the ".vercel" folder?
+No, you should not share the ".vercel" folder with anyone.
+Upon creation, it will be automatically added to your ".gitignore" file.
 
 ```
 
@@ -832,6 +856,98 @@ export function Layout() {
 }
 ```
 
+# src/components/NameRecommendations.tsx
+
+```tsx
+import { useQuery } from '@tanstack/react-query';
+import { SearchResult } from '../types/api';
+import { apiRequest } from '../utils/network';
+import { Skeleton } from './ui/Skeleton';
+import { useCart } from '../hooks/useCart';
+
+// Hook for recommendations
+export function useNameRecommendations(sld: string) {
+  return useQuery({
+    queryKey: ['recommendations', sld],
+    queryFn: async () => {
+      if (!sld) return [];
+      return apiRequest({
+        endpoint: `/v1/partner/recommendations?sld=${sld}`,
+        method: 'GET',
+        body: null,
+      }) as Promise<SearchResult[]>;
+    },
+    enabled: Boolean(sld),
+  });
+}
+
+export function NameRecommendations({ searchTerm }: { searchTerm: string }) {
+  const { data: recommendations, isLoading } = useNameRecommendations(searchTerm);
+  const { handleAddToCart, getIsItemInCart } = useCart();
+
+  if (isLoading) {
+    return (
+      <div className="mt-8 space-y-3">
+        <Skeleton className="h-[72px]" />
+        <Skeleton className="h-[72px]" />
+      </div>
+    );
+  }
+
+  if (!recommendations?.length) {
+    return null;
+  }
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-xl font-semibold text-gray-900 mb-4">
+        Similar Names You Might Like
+      </h2>
+      <div className="space-y-3">
+        {recommendations.map((result) => (
+          <div
+            key={`${result.sld}.${result.tld}`}
+            className="bg-[#2A2D36] rounded-lg p-4 flex items-center justify-between group"
+          >
+            <div className="flex-1">
+              <span className="text-white text-lg">
+                {result.sld}.{result.tld}
+              </span>
+              <div className="text-gray-400 text-sm mt-1">
+                {result.status === 'available' ? 'Available' : 'Registered'}
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-white">
+                  ${parseFloat(result.usdPrice || '0').toFixed(2)}
+                </div>
+                {result.nativeAmount && (
+                  <div className="text-gray-400 text-sm">
+                    {result.nativeAmount} {result.nativeCurrency}
+                  </div>
+                )}
+              </div>
+              
+              {result.status === 'available' && (
+                <button
+                  onClick={() => handleAddToCart(result)}
+                  className="bg-[#4C82FB] hover:bg-[#3E74E7] text-white px-6 py-2 rounded-lg transition-colors"
+                  disabled={getIsItemInCart(result)}
+                >
+                  {getIsItemInCart(result) ? 'Added' : 'Add to Cart'}
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
 # src/components/Navigation.tsx
 
 ```tsx
@@ -1419,6 +1535,7 @@ export function SearchBar({ value, onChange }: SearchBarProps) {
 ```tsx
 import { SearchBar } from './SearchBar';
 import { SearchResults } from './SearchResults';
+import { NameRecommendations } from './NameRecommendations';
 import { useSearch } from '../hooks/useSearch';
 import { Cart } from './Cart';
 
@@ -1457,6 +1574,10 @@ export function SearchPage() {
             searchTerm={searchInput}
           />
         </div>
+
+        {searchInput && !isLoading && (
+          <NameRecommendations searchTerm={searchInput} />
+        )}
 
         <div className="mt-8">
           <Cart />
@@ -1563,13 +1684,13 @@ export const SearchResultCard = memo(function SearchResultCard({
 import type { ApiErrorResponse, SearchResultRequestResponse } from '../types/api';
 import { SearchResultCard } from './SearchResultCard';
 
-type SearchResultsProps = {
+interface SearchResultsProps {
   isError: boolean;
   isLoading: boolean;
   error: ApiErrorResponse | null;
-  searchResults?: SearchResultRequestResponse;
+  searchResults: SearchResultRequestResponse | undefined;
   searchTerm?: string;
-};
+}
 
 export function SearchResults({
   isError,
@@ -1761,31 +1882,20 @@ export const numbersConfigForFractionDigits = {
 ```ts
 import { createConfig, http } from 'wagmi';
 import { mainnet, sepolia } from 'wagmi/chains';
-import { coinbaseWallet, injected } from 'wagmi/connectors';
+import { injected } from 'wagmi/connectors';
 
 const DEFAULT_POLLING_INTERVAL = 8_000;
 
 export const getWagmiConfig = () => {
-  const defaultAppMeta = {
-    name: "D3 api demo",
-    description: "Official Identity Service for Top web3 communities",
-    url: window.location.origin,
-    icons: ["https://d3.app/favicon.png"],
-  };
-
   return createConfig({
     chains: [mainnet, sepolia],
     connectors: [
-      coinbaseWallet({
-        appLogoUrl: defaultAppMeta.icons[0],
-        darkMode: true,
-      }),
-      injected({ shimDisconnect: false }),
+      injected({
+        shimDisconnect: true,
+      })
     ],
     ssr: true,
     syncConnectedChain: true,
-    multiInjectedProviderDiscovery: true,
-    cacheTime: DEFAULT_POLLING_INTERVAL,
     pollingInterval: DEFAULT_POLLING_INTERVAL,
     transports: {
       [mainnet.id]: http(),
@@ -1891,29 +2001,33 @@ export function useDomainProfile(domain: string) {
 # src/hooks/useFetchRequest.ts
 
 ```ts
-// src/hooks/useFetchRequest.ts
-import { useQuery, type QueryKey } from '@tanstack/react-query';
+import { useQuery, type QueryKey, UseQueryOptions } from '@tanstack/react-query';
 import type { ApiErrorResponse } from '../types/api';
 import { apiRequest } from '../utils/network';
+
+interface FetchRequestOptions<TData, TError> {
+  queryKey: QueryKey;
+  endpoint: string;
+  queryParameters?: Omit<UseQueryOptions<TData, TError>, 'queryKey' | 'queryFn'>;
+  method?: 'GET' | 'POST' | 'PUT' | 'UPDATE';
+  requestBody?: unknown;
+}
 
 export const useFetchRequest = <TData = unknown, TError = ApiErrorResponse>({
   queryKey,
   endpoint,
-  queryParameters = { staleTime: Infinity, retry: false, refetchOnWindowFocus: false },
+  queryParameters = {},
   method = 'GET',
   requestBody = null,
-}: {
-  queryKey: QueryKey;
-  endpoint: string;
-  queryParameters?: object;
-  method?: 'GET' | 'POST' | 'PUT' | 'UPDATE';
-  requestBody?: unknown;
-}) => {
+}: FetchRequestOptions<TData, TError>) => {
   const body = requestBody ? JSON.stringify(requestBody) : null;
   
   return useQuery<TData, TError>({
-    queryKey: [...queryKey],
-    queryFn: async () => apiRequest({ endpoint, body, method }),
+    queryKey,
+    queryFn: async () => {
+      const response = await apiRequest({ endpoint, body, method });
+      return response as TData;
+    },
     ...queryParameters,
   });
 };
@@ -1998,7 +2112,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { apiEndpoints, cacheKeys, PAGE_SIZE } from '../config/constants';
 import { useFetchRequest } from './useFetchRequest';
-import type { SearchResultRequestResponse } from '../types/api';
+import type { SearchResultRequestResponse, ApiErrorResponse } from '../types/api';
 
 type SearchQueryParams = {
   sld: string;
@@ -2009,6 +2123,9 @@ type SearchQueryParams = {
 
 const appTlds = import.meta.env.VITE_TLDS || 'core,shib';
 
+// Minimum length for search term before making API calls
+const MIN_SEARCH_LENGTH = 3;
+
 export const useSearch = () => {
   const [searchInput, setSearchInput] = useState('');
   const [searchQueryParams, setSearchQueryParams] = useState<SearchQueryParams>({
@@ -2018,23 +2135,28 @@ export const useSearch = () => {
     limit: PAGE_SIZE,
   });
 
-  // Create the debounced search function
+  // Much longer debounce time
   const debouncedSearch = useDebouncedCallback((value: string) => {
-    setSearchQueryParams(prev => ({
-      ...prev,
-      sld: value,
-    }));
-  }, 300);
+    if (value.length >= MIN_SEARCH_LENGTH) {
+      setSearchQueryParams(prev => ({
+        ...prev,
+        sld: value,
+      }));
+    }
+  }, 1000); // Increased to 1 second
 
-  // Update search params when input changes
   useEffect(() => {
     if (searchInput) {
       debouncedSearch(searchInput);
+    } else {
+      setSearchQueryParams(prev => ({ ...prev, sld: '' }));
     }
   }, [searchInput, debouncedSearch]);
 
   const searchUrlWithParams = useMemo(() => {
-    if (!searchQueryParams.sld) return '';
+    if (!searchQueryParams.sld || searchQueryParams.sld.length < MIN_SEARCH_LENGTH) {
+      return '';
+    }
     return `${apiEndpoints.search}?` + new URLSearchParams({
       sld: searchQueryParams.sld,
       tld: searchQueryParams.tld,
@@ -2048,12 +2170,15 @@ export const useSearch = () => {
     isLoading,
     isError,
     error,
-  } = useFetchRequest<SearchResultRequestResponse>({
+  } = useFetchRequest<SearchResultRequestResponse, ApiErrorResponse>({
     queryKey: [cacheKeys.fetchSearchResults, searchQueryParams],
     endpoint: searchUrlWithParams,
     queryParameters: {
-      enabled: Boolean(searchQueryParams.sld),
-      retry: false,
+      enabled: Boolean(searchQueryParams.sld) && searchQueryParams.sld.length >= MIN_SEARCH_LENGTH,
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      staleTime: 60000, // Cache results for 1 minute
+      cacheTime: 300000, // Keep in cache for 5 minutes
       refetchOnWindowFocus: false,
     },
   });
@@ -2065,7 +2190,8 @@ export const useSearch = () => {
     isLoading,
     isError,
     error,
-  };
+    isReadyToSearch: searchInput.length >= MIN_SEARCH_LENGTH,
+  } as const;
 };
 ```
 
@@ -2409,6 +2535,111 @@ export type ConnectWallet = {
 ```ts
 import { defaultBaseApiPath } from '../config/apiConfig';
 
+// Stricter rate limiting configuration
+const RATE_LIMIT = {
+  MAX_REQUESTS_PER_WINDOW: 2, // Even more conservative
+  WINDOW_MS: 2000, // 2 second window
+  MIN_REQUEST_SPACING_MS: 1000, // Minimum 1 second between requests
+  RETRY_AFTER_429_MS: 8000, // Longer wait after 429
+  MAX_RETRIES: 2,
+  CACHE_TTL_MS: 60000 // Cache for 1 minute
+};
+
+// Simple cache implementation
+class RequestCache {
+  private cache: Map<string, { data: any; timestamp: number }> = new Map();
+
+  set(key: string, data: any) {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    });
+  }
+
+  get(key: string): any | null {
+    const entry = this.cache.get(key);
+    if (!entry) return null;
+    
+    // Check if cache entry is still valid
+    if (Date.now() - entry.timestamp > RATE_LIMIT.CACHE_TTL_MS) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return entry.data;
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+}
+
+class RequestQueue {
+  private queue: { timestamp: number }[] = [];
+  private lastRequestTime = 0;
+  private cache = new RequestCache();
+
+  private cleanup() {
+    const now = Date.now();
+    const windowStart = now - RATE_LIMIT.WINDOW_MS;
+    this.queue = this.queue.filter(req => req.timestamp > windowStart);
+  }
+
+  async waitIfNeeded(): Promise<void> {
+    this.cleanup();
+
+    // Check if we need to wait for the rate limit window
+    if (this.queue.length >= RATE_LIMIT.MAX_REQUESTS_PER_WINDOW) {
+      const oldestRequest = this.queue[0];
+      const waitTime = oldestRequest.timestamp + RATE_LIMIT.WINDOW_MS - Date.now();
+      if (waitTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        this.cleanup();
+      }
+    }
+
+    // Ensure minimum spacing between requests
+    const timeSinceLastRequest = Date.now() - this.lastRequestTime;
+    if (timeSinceLastRequest < RATE_LIMIT.MIN_REQUEST_SPACING_MS) {
+      await new Promise(resolve => 
+        setTimeout(resolve, RATE_LIMIT.MIN_REQUEST_SPACING_MS - timeSinceLastRequest)
+      );
+    }
+  }
+
+  addRequest() {
+    this.cleanup();
+    this.lastRequestTime = Date.now();
+    this.queue.push({ timestamp: this.lastRequestTime });
+  }
+
+  getCachedResponse(key: string) {
+    return this.cache.get(key);
+  }
+
+  setCachedResponse(key: string, data: any) {
+    this.cache.set(key, data);
+  }
+}
+
+const requestQueue = new RequestQueue();
+
+export class APIError extends Error {
+  public status: number;
+  public errors: string[];
+
+  constructor(message: string, status: number, errors: string[] = []) {
+    super(message);
+    this.name = 'APIError';
+    this.status = status;
+    this.errors = errors;
+  }
+}
+
+async function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export const apiRequest = async ({
   endpoint,
   body,
@@ -2421,27 +2652,92 @@ export const apiRequest = async ({
   endpoint: string;
   body: BodyInit | null;
   method?: string;
-  headers?: HeadersInit | null;
+  headers?: HeadersInit;
 }) => {
   const apiKey = import.meta.env.VITE_D3_API_KEY;
   const apiEndpoint = import.meta.env.VITE_API_ENDPOINT;
   const basePath = apiEndpoint || defaultBaseApiPath;
   const absolutePath = basePath + endpoint;
+  const cacheKey = `${method}:${absolutePath}:${body}`;
+
+  // Check cache first for GET requests
+  if (method === 'GET') {
+    const cachedResponse = requestQueue.getCachedResponse(cacheKey);
+    if (cachedResponse) {
+      return cachedResponse;
+    }
+  }
+
+  let retries = 0;
   const requestHeaders = { ...headers, 'Api-Key': apiKey };
 
-  const requestOptions: RequestInit = {
-    method,
-    headers: requestHeaders,
-    ...(method === 'POST' && body && { body }),
-  };
+  while (retries <= RATE_LIMIT.MAX_RETRIES) {
+    try {
+      // Wait if we need to respect rate limits
+      await requestQueue.waitIfNeeded();
 
-  const response = await fetch(absolutePath, requestOptions);
+      // Make the request
+      requestQueue.addRequest();
+      const response = await fetch(absolutePath, {
+        method,
+        headers: requestHeaders,
+        ...(method === 'POST' && body && { body }),
+      });
 
-  if (!response.ok) {
-    const errorMessage = await response.json();
-    throw new Error(errorMessage?.message || errorMessage?.error);
+      // Handle rate limiting
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const waitTime = retryAfter ? 
+          parseInt(retryAfter) * 1000 : 
+          RATE_LIMIT.RETRY_AFTER_429_MS * (retries + 1);
+        
+        console.warn(`Rate limited, waiting ${waitTime}ms before retry`);
+        await wait(waitTime);
+        retries++;
+        continue;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new APIError(
+          errorData.message || 'API request failed',
+          response.status,
+          Array.isArray(errorData.message) ? errorData.message : [errorData.message]
+        );
+      }
+
+      const data = await response.json();
+      
+      // Cache successful GET responses
+      if (method === 'GET') {
+        requestQueue.setCachedResponse(cacheKey, data);
+      }
+
+      return data;
+
+    } catch (error) {
+      if (error instanceof APIError && error.status !== 429) {
+        throw error;
+      }
+      
+      if (retries === RATE_LIMIT.MAX_RETRIES) {
+        throw new APIError(
+          'Maximum retry attempts reached',
+          429,
+          ['Too many requests, please try again later']
+        );
+      }
+
+      retries++;
+      await wait(RATE_LIMIT.RETRY_AFTER_429_MS * retries);
+    }
   }
-  return await response.json();
+
+  throw new APIError(
+    'Request failed after maximum retries',
+    500,
+    ['An unexpected error occurred']
+  );
 };
 ```
 

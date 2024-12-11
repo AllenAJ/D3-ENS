@@ -52,14 +52,16 @@ class RequestQueue {
 
   async waitIfNeeded(): Promise<void> {
     this.cleanup();
-
+  
     // Check if we need to wait for the rate limit window
     if (this.queue.length >= RATE_LIMIT.MAX_REQUESTS_PER_WINDOW) {
       const oldestRequest = this.queue[0];
-      const waitTime = oldestRequest.timestamp + RATE_LIMIT.WINDOW_MS - Date.now();
-      if (waitTime > 0) {
-        await new Promise(resolve => setTimeout(resolve, waitTime));
-        this.cleanup();
+      if (oldestRequest) {  // Add this check
+        const waitTime = oldestRequest.timestamp + RATE_LIMIT.WINDOW_MS - Date.now();
+        if (waitTime > 0) {
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          this.cleanup();
+        }
       }
     }
 
@@ -153,7 +155,7 @@ export const apiRequest = async ({
       if (response.status === 429) {
         const retryAfter = response.headers.get('Retry-After');
         const waitTime = retryAfter ? 
-          parseInt(retryAfter) * 1000 : 
+          parseInt(retryAfter) * 100 : 
           RATE_LIMIT.RETRY_AFTER_429_MS * (retries + 1);
         
         console.warn(`Rate limited, waiting ${waitTime}ms before retry`);

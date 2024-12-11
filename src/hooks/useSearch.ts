@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { apiEndpoints, cacheKeys, PAGE_SIZE } from '../config/constants';
 import { useFetchRequest } from './useFetchRequest';
@@ -68,7 +68,7 @@ export const useSearch = () => {
       retry: 2,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       staleTime: 60000, // Cache results for 1 minute
-      cacheTime: 300000, // Keep in cache for 5 minutes
+      gcTime: 300000, // Replace cacheTime with gcTime
       refetchOnWindowFocus: false,
     },
   });

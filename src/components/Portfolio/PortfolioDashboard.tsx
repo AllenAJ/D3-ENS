@@ -6,8 +6,6 @@ import { ExpirationAlerts } from './ExpirationAlerts';
 import { PortfolioStats } from './PortfolioStats';
 import { usePortfolio } from '../../hooks/usePortfolio';
 
-import type { DomainPortfolio } from '../../types/portfolio';
-
 export function PortfolioDashboard() {
   const { address } = useAccount();
   const { data: portfolio, isLoading } = usePortfolio(address);
