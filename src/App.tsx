@@ -6,6 +6,12 @@ import { useSearch } from './hooks/useSearch';
 import { WagmiProvider } from 'wagmi';
 import { getWagmiConfig } from './config/evmConfig';
 import { Menu } from 'lucide-react';
+import { DomainProfilePage } from './components/DomainProfile/DomainProfilePage';
+import { SearchPage } from './components/SearchPage';
+import { BrowserRouter, Routes, Route,createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { Navigation } from './components/Navigation';
+import { PortfolioDashboard } from './components/Portfolio/PortfolioDashboard';
+import { Layout } from './components/Layout';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,13 +82,35 @@ function Hero() {
   );
 }
 
+const router = createBrowserRouter([
+  {
+    element: <Layout />,
+    children: [
+      {
+        path: "/",
+        element: <SearchPage />,
+      },
+      {
+        path: "/domain/:domain",
+        element: <DomainProfilePage />,
+      },
+      {
+        path: "/portfolio",
+        element: <PortfolioDashboard />,
+      },
+    ],
+  },
+]);
+
+function AppContent() {
+  return <RouterProvider router={router} />;
+}
+
 function App() {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <div className="min-h-screen">
-          <Hero />
-        </div>
+        <AppContent />
       </QueryClientProvider>
     </WagmiProvider>
   );

@@ -1,13 +1,13 @@
 import type { ApiErrorResponse, SearchResultRequestResponse } from '../types/api';
 import { SearchResultCard } from './SearchResultCard';
 
-type SearchResultsProps = {
+interface SearchResultsProps {
   isError: boolean;
   isLoading: boolean;
   error: ApiErrorResponse | null;
-  searchResults?: SearchResultRequestResponse;
+  searchResults: SearchResultRequestResponse | undefined;
   searchTerm?: string;
-};
+}
 
 export function SearchResults({
   isError,

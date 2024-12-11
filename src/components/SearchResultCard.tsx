@@ -1,5 +1,6 @@
 import { memo } from 'react';
-import { CheckCircle, XCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 import type { SearchResult } from '../types/api';
 import { useCart } from '../hooks/useCart';
 
@@ -14,6 +15,7 @@ export const SearchResultCard = memo(function SearchResultCard({
   const isItemInCart = getIsItemInCart(searchResult);
   const isDomainAvailable = searchResult?.status?.toLowerCase() === 'available';
   const isRegistered = searchResult?.status?.toLowerCase() === 'registered';
+  const domainName = `${searchResult.sld}.${searchResult.tld}`;
 
   const handleCartAction = () => {
     if (isItemInCart) {
@@ -24,16 +26,26 @@ export const SearchResultCard = memo(function SearchResultCard({
   };
 
   return (
-    <div className="bg-[#2A2D36] rounded-lg p-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+    <div className="bg-[#2A2D36] rounded-lg p-4 flex items-center justify-between group">
+      <div className="flex items-center gap-3 flex-1">
         {isDomainAvailable ? (
           <CheckCircle className="w-5 h-5 text-green-400" />
         ) : (
           <XCircle className="w-5 h-5 text-red-400" />
         )}
-        <div>
-          <div className="text-xl text-white font-normal">
-            {searchResult.sld}.{searchResult.tld}
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xl text-white font-normal">
+              {domainName}
+            </span>
+            {isRegistered && (
+              <Link 
+                to={`/domain/${domainName}`}
+                className="text-blue-400 hover:text-blue-300 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <ExternalLink size={16} />
+              </Link>
+            )}
           </div>
           <div className="text-sm mt-0.5">
             {isDomainAvailable && (

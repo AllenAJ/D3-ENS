@@ -1,26 +1,30 @@
-// src/hooks/useFetchRequest.ts
-import { useQuery, type QueryKey } from '@tanstack/react-query';
+import { useQuery, type QueryKey, UseQueryOptions } from '@tanstack/react-query';
 import type { ApiErrorResponse } from '../types/api';
 import { apiRequest } from '../utils/network';
+
+interface FetchRequestOptions<TData, TError> {
+  queryKey: QueryKey;
+  endpoint: string;
+  queryParameters?: Omit<UseQueryOptions<TData, TError>, 'queryKey' | 'queryFn'>;
+  method?: 'GET' | 'POST' | 'PUT' | 'UPDATE';
+  requestBody?: unknown;
+}
 
 export const useFetchRequest = <TData = unknown, TError = ApiErrorResponse>({
   queryKey,
   endpoint,
-  queryParameters = { staleTime: Infinity, retry: false, refetchOnWindowFocus: false },
+  queryParameters = {},
   method = 'GET',
   requestBody = null,
-}: {
-  queryKey: QueryKey;
-  endpoint: string;
-  queryParameters?: object;
-  method?: 'GET' | 'POST' | 'PUT' | 'UPDATE';
-  requestBody?: unknown;
-}) => {
+}: FetchRequestOptions<TData, TError>) => {
   const body = requestBody ? JSON.stringify(requestBody) : null;
   
   return useQuery<TData, TError>({
-    queryKey: [...queryKey],
-    queryFn: async () => apiRequest({ endpoint, body, method }),
+    queryKey,
+    queryFn: async () => {
+      const response = await apiRequest({ endpoint, body, method });
+      return response as TData;
+    },
     ...queryParameters,
   });
 };
