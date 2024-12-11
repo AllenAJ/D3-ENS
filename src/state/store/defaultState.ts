@@ -1,4 +1,5 @@
-import type { Cart, ConnectWallet, AppSettings } from '../../types/store';
+// src/state/store/defaultState.ts
+import type { Cart, AppSettings, ConnectWallet } from '../../types/store';
 
 export const appSettings: AppSettings = {
   isCartViewOpen: false,

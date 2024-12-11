@@ -15,8 +15,12 @@ export const Checkout = () => {
   const { address } = useAccount();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const { cart, resetCart } = useStore();
+  const { cart, resetCart } = useStore(state => ({
+    cart: state.cart,
+    resetCart: state.resetCart
+  }));
   const [selectedPayment, setSelectedPayment] = useState<PaymentOption | null>(null);
+
 
   const fetchPaymentOptions = useCallback(async () => {
     if (!cart.items?.length) return;

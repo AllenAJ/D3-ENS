@@ -1,13 +1,15 @@
+// src/state/store.ts
 import { create } from 'zustand';
-import type { AppState } from '../types/store';
+import type { AppState, Cart } from '../types/store';
 import type { SearchResult } from '../types/api';
 
-const initialState: CartState = {
-  items: []
+const initialCart: Cart = {
+  items: [],
+  isCheckoutInProgress: false
 };
 
 export const useStore = create<AppState>((set) => ({
-  cart: initialState,
+  cart: initialCart,
   addToCart: (item: SearchResult) => 
     set((state) => ({
       cart: {
@@ -20,8 +22,12 @@ export const useStore = create<AppState>((set) => ({
       cart: {
         ...state.cart,
         items: state.cart.items.filter(
-          (i) => i.sld + i.tld !== item.sld + item.tld
+          (cartItem) => cartItem.sld + cartItem.tld !== item.sld + item.tld
         )
       }
+    })),
+  resetCart: () => 
+    set(() => ({
+      cart: initialCart
     })),
 }));
